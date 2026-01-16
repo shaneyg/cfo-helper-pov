@@ -2,6 +2,8 @@ import streamlit as st
 import os
 import nest_asyncio
 import hashlib
+import requests
+from datetime import datetime
 from urllib.parse import urlparse
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
@@ -86,10 +88,60 @@ def init_database():
                     uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """))
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS visitor_logs (
+                    id SERIAL PRIMARY KEY,
+                    ip_address VARCHAR(45) NOT NULL,
+                    country VARCHAR(100),
+                    visited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
             conn.commit()
         return True
     except Exception:
         return False
+
+def get_visitor_ip():
+    try:
+        response = requests.get('https://api.ipify.org?format=json', timeout=5)
+        return response.json().get('ip', 'Unknown')
+    except:
+        return 'Unknown'
+
+def get_country_from_ip(ip_address):
+    if ip_address == 'Unknown':
+        return 'Unknown'
+    try:
+        response = requests.get(f'http://ip-api.com/json/{ip_address}?fields=country', timeout=5)
+        return response.json().get('country', 'Unknown')
+    except:
+        return 'Unknown'
+
+def log_visitor(ip_address, country):
+    try:
+        engine = get_db_engine()
+        with engine.connect() as conn:
+            result = conn.execute(text(
+                "SELECT id FROM visitor_logs WHERE ip_address = :ip AND visited_at > NOW() - INTERVAL '1 hour'"
+            ), {"ip": ip_address})
+            if not result.fetchone():
+                conn.execute(text(
+                    "INSERT INTO visitor_logs (ip_address, country) VALUES (:ip, :country)"
+                ), {"ip": ip_address, "country": country})
+                conn.commit()
+    except:
+        pass
+
+def get_visitor_logs():
+    try:
+        engine = get_db_engine()
+        with engine.connect() as conn:
+            result = conn.execute(text(
+                "SELECT ip_address, country, visited_at FROM visitor_logs ORDER BY visited_at DESC LIMIT 50"
+            ))
+            return [{"ip": row[0], "country": row[1], "visited_at": row[2]} for row in result]
+    except:
+        return []
 
 db_ok, db_error = check_database_connection()
 if not db_ok:
@@ -105,6 +157,12 @@ if not init_database():
     if st.button("Retry"):
         st.rerun()
     st.stop()
+
+if "visitor_logged" not in st.session_state:
+    visitor_ip = get_visitor_ip()
+    visitor_country = get_country_from_ip(visitor_ip)
+    log_visitor(visitor_ip, visitor_country)
+    st.session_state.visitor_logged = True
 
 from llama_index.core import VectorStoreIndex, Settings, StorageContext
 from llama_index.llms.openai import OpenAI
@@ -228,6 +286,17 @@ with st.sidebar:
                     st.rerun()
     else:
         st.info("No documents uploaded yet.")
+    
+    st.header("3. Visitor Log")
+    visitor_logs = get_visitor_logs()
+    if visitor_logs:
+        import pandas as pd
+        df = pd.DataFrame(visitor_logs)
+        df.columns = ['IP Address', 'Country', 'Visit Time']
+        df['Visit Time'] = pd.to_datetime(df['Visit Time']).dt.strftime('%Y-%m-%d %H:%M')
+        st.dataframe(df, use_container_width=True, hide_index=True)
+    else:
+        st.info("No visitors recorded yet.")
 
 docs = get_documents_list()
 if docs:
