@@ -42,10 +42,14 @@ st.set_page_config(page_title="CFO Helper", page_icon="💰")
 # Custom Colors (Fertiglobe Branding)
 st.markdown("""
     <style>
-    .stApp { background-color: #fcfcfc; }
-    h1 { color: #0071bc; } 
+    .stApp { background-color: #ffffff !important; }
+    h1 { color: #0071bc !important; } 
+    p, span, label, div { color: #333333 !important; }
     .stChatInput { border-color: #2e8540; }
-    div[data-testid="stChatMessage"] { background-color: #ffffff; border: 1px solid #ddd; border-radius: 10px; }
+    div[data-testid="stChatMessage"] { background-color: #f8f9fa !important; border: 1px solid #ddd; border-radius: 10px; }
+    .stMarkdown, .stText { color: #333333 !important; }
+    [data-testid="stSidebar"] { background-color: #f0f2f6 !important; }
+    [data-testid="stSidebar"] * { color: #333333 !important; }
     </style>
     """, unsafe_allow_html=True)
 
