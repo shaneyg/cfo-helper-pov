@@ -1,0 +1,25 @@
+💰 Fertiglobe Financial Assistant
+ImportError: `llama-index-embeddings-openai` package not found, please run `pip install llama-index-embeddings-openai`
+Traceback:
+File "/home/runner/workspace/.pythonlibs/lib/python3.10/site-packages/streamlit/runtime/scriptrunner/script_runner.py", line 541, in _run_script
+    exec(code, module.__dict__)
+File "/home/runner/workspace/main.py", line 66, in <module>
+    index = get_ai_brain("temp_report.pdf")
+File "/home/runner/workspace/.pythonlibs/lib/python3.10/site-packages/streamlit/runtime/caching/cache_utils.py", line 211, in wrapper
+    return cached_func(*args, **kwargs)
+File "/home/runner/workspace/.pythonlibs/lib/python3.10/site-packages/streamlit/runtime/caching/cache_utils.py", line 242, in __call__
+    return self._get_or_create_cached_value(args, kwargs)
+File "/home/runner/workspace/.pythonlibs/lib/python3.10/site-packages/streamlit/runtime/caching/cache_utils.py", line 266, in _get_or_create_cached_value
+    return self._handle_cache_miss(cache, value_key, func_args, func_kwargs)
+File "/home/runner/workspace/.pythonlibs/lib/python3.10/site-packages/streamlit/runtime/caching/cache_utils.py", line 320, in _handle_cache_miss
+    computed_value = self._info.func(*func_args, **func_kwargs)
+File "/home/runner/workspace/main.py", line 36, in get_ai_brain
+    index = VectorStoreIndex.from_documents(documents)
+File "/home/runner/workspace/.pythonlibs/lib/python3.10/site-packages/llama_index/core/indices/base.py", line 122, in from_documents
+    return cls(
+File "/home/runner/workspace/.pythonlibs/lib/python3.10/site-packages/llama_index/core/indices/vector_store/base.py", line 71, in __init__
+    embed_model or Settings.embed_model, callback_manager=callback_manager
+File "/home/runner/workspace/.pythonlibs/lib/python3.10/site-packages/llama_index/core/settings.py", line 64, in embed_model
+    self._embed_model = resolve_embed_model("default")
+File "/home/runner/workspace/.pythonlibs/lib/python3.10/site-packages/llama_index/core/embeddings/utils.py", line 61, in resolve_embed_model
+    raise ImportError(
