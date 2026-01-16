@@ -58,7 +58,7 @@ def get_file_hash(file_content):
     return hashlib.md5(file_content).hexdigest()
 
 # 5. BUILD THE WEBSITE
-st.set_page_config(page_title="CFO Helper", page_icon="💰")
+st.set_page_config(page_title="CFO Helper", page_icon="💰", layout="wide", initial_sidebar_state="expanded")
 
 # Custom Colors (Fertiglobe Branding)
 st.markdown("""
