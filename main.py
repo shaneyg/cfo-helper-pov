@@ -98,8 +98,15 @@ if uploaded_file:
     if "chat_engine" not in st.session_state:
         st.session_state.chat_engine = index.as_chat_engine(
             chat_mode="context",
-            system_prompt="You are a CFO's assistant. CRITICAL: When reading financial tables, ALWAYS check the header for units (e.g. 'Amounts in USD Millions'). If a cell says '5.2' and the header says 'Millions', the answer is '5.2 Million', not '5.2'."
-        )
+                system_prompt="""You are a CFO's assistant.
+
+                RULES:
+                1. UNITS: ALWAYS check table headers. If a cell says '5.2' and header says '$m', answer '5.2 Million'.
+                2. FORMATTING: Do NOT use LaTeX math mode (do not put $ signs around numbers).
+                3. STYLE: Use bullet points for multiple data points. Make it easy for an executive to scan.
+                4. CURRENCY: Escape dollar signs like this: \$ or just write 'USD'.
+                """
+            )
 
     # Chat UI
     if "messages" not in st.session_state:

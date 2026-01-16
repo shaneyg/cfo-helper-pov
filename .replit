@@ -9,9 +9,9 @@ hidden = [".pythonlibs", ".streamlit"]
 channel = "stable-24_05"
 
 [deployment]
-run = ["streamlit", "run", "--server.enableCORS=false", "--server.enableWebsocketCompression=false", "--server.runOnSave=false", "main.py"]
+run = ["streamlit", "run", "main.py", "--server.port", "5000", "--server.address", "0.0.0.0", "--server.headless", "true"]
 ignorePorts = false
-deploymentTarget = "gce"
+deploymentTarget = "autoscale"
 
 [[ports]]
 localPort = 5000
