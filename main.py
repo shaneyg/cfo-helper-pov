@@ -2,118 +2,13 @@ import streamlit as st
 import os
 import nest_asyncio
 import hashlib
+import time
 from sqlalchemy import create_engine, text
+from sqlalchemy.exc import OperationalError
 
 nest_asyncio.apply()
 
 st.set_page_config(page_title="CFO Helper", page_icon="💰", layout="wide", initial_sidebar_state="expanded")
-
-required_vars = ["OPENAI_API_KEY", "DATABASE_URL", "PGDATABASE", "PGHOST", "PGPASSWORD", "PGPORT", "PGUSER"]
-missing_vars = [var for var in required_vars if not os.environ.get(var)]
-if missing_vars:
-    st.error(f"Missing environment variables: {', '.join(missing_vars)}")
-    st.stop()
-
-from llama_index.core import VectorStoreIndex, Settings, StorageContext
-from llama_index.llms.openai import OpenAI
-from llama_index.embeddings.openai import OpenAIEmbedding
-from llama_index.vector_stores.postgres import PGVectorStore
-from llama_parse import LlamaParse
-
-Settings.llm = OpenAI(model="gpt-4o", temperature=0.0)
-Settings.embed_model = OpenAIEmbedding(model="text-embedding-3-small")
-
-DATABASE_URL = os.environ.get("DATABASE_URL")
-VECTOR_TABLE = "document_vectors"
-
-@st.cache_resource
-def get_db_engine():
-    return create_engine(DATABASE_URL, pool_pre_ping=True)
-
-def init_database():
-    engine = get_db_engine()
-    try:
-        with engine.connect() as conn:
-            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-            conn.execute(text("""
-                CREATE TABLE IF NOT EXISTS documents (
-                    id SERIAL PRIMARY KEY,
-                    filename VARCHAR(255) NOT NULL,
-                    file_hash VARCHAR(64) NOT NULL UNIQUE,
-                    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """))
-            conn.commit()
-    except Exception as e:
-        st.error(f"Database initialization error: {str(e)}")
-
-init_database()
-
-def get_vector_store():
-    return PGVectorStore.from_params(
-        database=os.environ.get("PGDATABASE"),
-        host=os.environ.get("PGHOST"),
-        password=os.environ.get("PGPASSWORD"),
-        port=os.environ.get("PGPORT"),
-        user=os.environ.get("PGUSER"),
-        table_name=VECTOR_TABLE,
-        embed_dim=1536,
-    )
-
-def get_documents_list():
-    try:
-        engine = get_db_engine()
-        with engine.connect() as conn:
-            result = conn.execute(text("SELECT id, filename, file_hash, uploaded_at FROM documents ORDER BY uploaded_at DESC"))
-            return [{"id": row[0], "filename": row[1], "file_hash": row[2], "uploaded_at": row[3]} for row in result]
-    except Exception as e:
-        st.error(f"Error fetching documents: {str(e)}")
-        return []
-
-def add_document_record(filename, file_hash):
-    try:
-        engine = get_db_engine()
-        with engine.connect() as conn:
-            conn.execute(text("INSERT INTO documents (filename, file_hash) VALUES (:filename, :file_hash) ON CONFLICT (file_hash) DO NOTHING"), {"filename": filename, "file_hash": file_hash})
-            conn.commit()
-    except Exception as e:
-        st.error(f"Error adding document record: {str(e)}")
-
-def remove_document(doc_id, file_hash):
-    try:
-        engine = get_db_engine()
-        with engine.connect() as conn:
-            conn.execute(text("DELETE FROM documents WHERE id = :id"), {"id": doc_id})
-            vector_table = f"data_{VECTOR_TABLE}"
-            conn.execute(text(f"DELETE FROM {vector_table} WHERE metadata_->>'file_hash' = :file_hash"), {"file_hash": file_hash})
-            conn.commit()
-    except Exception as e:
-        st.error(f"Error removing document: {str(e)}")
-
-def get_file_hash(file_content):
-    return hashlib.md5(file_content).hexdigest()
-
-def process_document(file_path, filename, file_hash):
-    if "LLAMA_CLOUD_API_KEY" in os.environ:
-        parser = LlamaParse(result_type="markdown", verbose=True)
-        documents = parser.load_data(file_path)
-    else:
-        from llama_index.core import SimpleDirectoryReader
-        documents = SimpleDirectoryReader(input_files=[file_path]).load_data()
-    
-    for doc in documents:
-        doc.metadata["file_hash"] = file_hash
-        doc.metadata["filename"] = filename
-    
-    vector_store = get_vector_store()
-    storage_context = StorageContext.from_defaults(vector_store=vector_store)
-    VectorStoreIndex.from_documents(documents, storage_context=storage_context)
-    
-    add_document_record(filename, file_hash)
-
-def get_index():
-    vector_store = get_vector_store()
-    return VectorStoreIndex.from_vector_store(vector_store)
 
 st.markdown("""
     <style>
@@ -138,6 +33,151 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 st.title("Fertiglobe Financial Assistant")
+
+required_vars = ["OPENAI_API_KEY", "DATABASE_URL", "PGDATABASE", "PGHOST", "PGPASSWORD", "PGPORT", "PGUSER"]
+missing_vars = [var for var in required_vars if not os.environ.get(var)]
+if missing_vars:
+    st.error(f"Missing environment variables: {', '.join(missing_vars)}")
+    st.stop()
+
+DATABASE_URL = os.environ.get("DATABASE_URL")
+VECTOR_TABLE = "document_vectors"
+
+@st.cache_resource
+def get_db_engine():
+    return create_engine(DATABASE_URL, pool_pre_ping=True, pool_recycle=300, connect_args={"connect_timeout": 10})
+
+def check_database_connection():
+    try:
+        engine = get_db_engine()
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return True, None
+    except OperationalError as e:
+        error_msg = str(e)
+        if "could not translate host name" in error_msg or "Name or service not known" in error_msg:
+            return False, "Database service is temporarily unavailable. This usually resolves itself in a few moments."
+        elif "connection refused" in error_msg.lower():
+            return False, "Database is not accepting connections. Please wait a moment and try again."
+        elif "timeout" in error_msg.lower():
+            return False, "Database connection timed out. Please try again."
+        else:
+            return False, "Unable to connect to the database. Please try again in a moment."
+    except Exception as e:
+        return False, "Database connection error. Please try again."
+
+def init_database():
+    try:
+        engine = get_db_engine()
+        with engine.connect() as conn:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS documents (
+                    id SERIAL PRIMARY KEY,
+                    filename VARCHAR(255) NOT NULL,
+                    file_hash VARCHAR(64) NOT NULL UNIQUE,
+                    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            conn.commit()
+        return True
+    except Exception:
+        return False
+
+db_ok, db_error = check_database_connection()
+if not db_ok:
+    st.warning(db_error)
+    if st.button("Retry Connection"):
+        st.cache_resource.clear()
+        st.rerun()
+    st.info("Upload functionality will be available once the database connection is restored.")
+    st.stop()
+
+if not init_database():
+    st.warning("Database tables are being set up. Please wait a moment and refresh.")
+    if st.button("Retry"):
+        st.rerun()
+    st.stop()
+
+from llama_index.core import VectorStoreIndex, Settings, StorageContext
+from llama_index.llms.openai import OpenAI
+from llama_index.embeddings.openai import OpenAIEmbedding
+from llama_index.vector_stores.postgres import PGVectorStore
+from llama_parse import LlamaParse
+
+Settings.llm = OpenAI(model="gpt-4o", temperature=0.0)
+Settings.embed_model = OpenAIEmbedding(model="text-embedding-3-small")
+
+def get_vector_store():
+    return PGVectorStore.from_params(
+        database=os.environ.get("PGDATABASE"),
+        host=os.environ.get("PGHOST"),
+        password=os.environ.get("PGPASSWORD"),
+        port=os.environ.get("PGPORT"),
+        user=os.environ.get("PGUSER"),
+        table_name=VECTOR_TABLE,
+        embed_dim=1536,
+    )
+
+def get_documents_list():
+    try:
+        engine = get_db_engine()
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT id, filename, file_hash, uploaded_at FROM documents ORDER BY uploaded_at DESC"))
+            return [{"id": row[0], "filename": row[1], "file_hash": row[2], "uploaded_at": row[3]} for row in result]
+    except Exception:
+        return []
+
+def add_document_record(filename, file_hash):
+    try:
+        engine = get_db_engine()
+        with engine.connect() as conn:
+            conn.execute(text("INSERT INTO documents (filename, file_hash) VALUES (:filename, :file_hash) ON CONFLICT (file_hash) DO NOTHING"), {"filename": filename, "file_hash": file_hash})
+            conn.commit()
+    except Exception as e:
+        raise Exception(f"Failed to save document record: {str(e)}")
+
+def remove_document(doc_id, file_hash):
+    try:
+        engine = get_db_engine()
+        with engine.connect() as conn:
+            conn.execute(text("DELETE FROM documents WHERE id = :id"), {"id": doc_id})
+            vector_table = f"data_{VECTOR_TABLE}"
+            try:
+                conn.execute(text(f"DELETE FROM {vector_table} WHERE metadata_->>'file_hash' = :file_hash"), {"file_hash": file_hash})
+            except Exception:
+                pass
+            conn.commit()
+    except Exception as e:
+        st.error(f"Error removing document. Please try again.")
+
+def get_file_hash(file_content):
+    return hashlib.md5(file_content).hexdigest()
+
+def process_document(file_path, filename, file_hash):
+    if "LLAMA_CLOUD_API_KEY" in os.environ:
+        parser = LlamaParse(result_type="markdown", verbose=True)
+        documents = parser.load_data(file_path)
+    else:
+        from llama_index.core import SimpleDirectoryReader
+        documents = SimpleDirectoryReader(input_files=[file_path]).load_data()
+    
+    for doc in documents:
+        doc.metadata["file_hash"] = file_hash
+        doc.metadata["filename"] = filename
+    
+    try:
+        vector_store = get_vector_store()
+        storage_context = StorageContext.from_defaults(vector_store=vector_store)
+        VectorStoreIndex.from_documents(documents, storage_context=storage_context)
+    except Exception as e:
+        raise Exception(f"Failed to store document embeddings. Please try again.")
+    
+    add_document_record(filename, file_hash)
+
+def get_index():
+    vector_store = get_vector_store()
+    return VectorStoreIndex.from_vector_store(vector_store)
 
 with st.sidebar:
     st.header("1. Upload Documents")
@@ -219,7 +259,6 @@ RULES:
                 st.session_state.messages.append({"role": "assistant", "content": response.response})
     
     except Exception as e:
-        st.error(f"Error loading documents: {str(e)}")
-        st.info("Try uploading a document to get started.")
+        st.error("Error loading documents. Please refresh the page and try again.")
 else:
     st.info("Upload PDF documents in the sidebar to get started.")
