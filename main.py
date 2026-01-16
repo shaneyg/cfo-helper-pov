@@ -2,7 +2,7 @@ import streamlit as st
 import os
 import nest_asyncio
 import hashlib
-import time
+from urllib.parse import urlparse
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
 
@@ -34,18 +34,25 @@ st.markdown("""
 
 st.title("Fertiglobe Financial Assistant")
 
-required_vars = ["OPENAI_API_KEY", "DATABASE_URL", "PGDATABASE", "PGHOST", "PGPASSWORD", "PGPORT", "PGUSER"]
+required_vars = ["OPENAI_API_KEY", "NEON_DATABASE_URL"]
 missing_vars = [var for var in required_vars if not os.environ.get(var)]
 if missing_vars:
     st.error(f"Missing environment variables: {', '.join(missing_vars)}")
     st.stop()
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
+DATABASE_URL = os.environ.get("NEON_DATABASE_URL", "").strip().replace("\\n", "").strip()
 VECTOR_TABLE = "document_vectors"
+
+parsed_url = urlparse(DATABASE_URL)
+DB_USER = parsed_url.username
+DB_PASSWORD = parsed_url.password
+DB_HOST = parsed_url.hostname
+DB_PORT = str(parsed_url.port or 5432)
+DB_NAME = parsed_url.path.lstrip('/')
 
 @st.cache_resource
 def get_db_engine():
-    return create_engine(DATABASE_URL, pool_pre_ping=True, pool_recycle=300, connect_args={"connect_timeout": 10})
+    return create_engine(DATABASE_URL, pool_pre_ping=True, pool_recycle=300, connect_args={"connect_timeout": 10, "sslmode": "require"})
 
 def check_database_connection():
     try:
@@ -110,11 +117,11 @@ Settings.embed_model = OpenAIEmbedding(model="text-embedding-3-small")
 
 def get_vector_store():
     return PGVectorStore.from_params(
-        database=os.environ.get("PGDATABASE"),
-        host=os.environ.get("PGHOST"),
-        password=os.environ.get("PGPASSWORD"),
-        port=os.environ.get("PGPORT"),
-        user=os.environ.get("PGUSER"),
+        database=DB_NAME,
+        host=DB_HOST,
+        password=DB_PASSWORD,
+        port=DB_PORT,
+        user=DB_USER,
         table_name=VECTOR_TABLE,
         embed_dim=1536,
     )
