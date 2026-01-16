@@ -60,17 +60,26 @@ def get_file_hash(file_content):
 # 5. BUILD THE WEBSITE
 st.set_page_config(page_title="CFO Helper", page_icon="💰", layout="wide", initial_sidebar_state="expanded")
 
-# Custom Colors (Fertiglobe Branding)
+# Custom Colors (Bloomberg Style - Yellow and Black)
 st.markdown("""
     <style>
-    .stApp { background-color: #ffffff !important; }
-    h1 { color: #0071bc !important; } 
-    p, span, label, div { color: #333333 !important; }
-    .stChatInput { border-color: #2e8540; }
-    div[data-testid="stChatMessage"] { background-color: #f8f9fa !important; border: 1px solid #ddd; border-radius: 10px; }
-    .stMarkdown, .stText { color: #333333 !important; }
-    [data-testid="stSidebar"] { background-color: #f0f2f6 !important; }
-    [data-testid="stSidebar"] * { color: #333333 !important; }
+    .stApp { background-color: #000000 !important; }
+    h1, h2, h3 { color: #FFB900 !important; }
+    p, span, label { color: #ffffff !important; }
+    .stChatInput { border-color: #FFB900 !important; background-color: #1a1a1a !important; }
+    .stChatInput input { color: #ffffff !important; }
+    div[data-testid="stChatMessage"] { background-color: #1a1a1a !important; border: 1px solid #FFB900; border-radius: 10px; }
+    div[data-testid="stChatMessage"] p { color: #ffffff !important; }
+    .stMarkdown, .stText { color: #ffffff !important; }
+    [data-testid="stSidebar"] { background-color: #1a1a1a !important; }
+    [data-testid="stSidebar"] * { color: #ffffff !important; }
+    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2 { color: #FFB900 !important; }
+    .stButton button { background-color: #FFB900 !important; color: #000000 !important; border: none !important; }
+    .stButton button:hover { background-color: #cc9400 !important; }
+    .stFileUploader { border-color: #FFB900 !important; }
+    .stAlert { background-color: #1a1a1a !important; border: 1px solid #FFB900 !important; }
+    .stAlert p { color: #FFB900 !important; }
+    div[data-testid="stFileUploader"] label { color: #ffffff !important; }
     </style>
     """, unsafe_allow_html=True)
 
