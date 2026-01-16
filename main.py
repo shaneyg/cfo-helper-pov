@@ -21,9 +21,22 @@ if "OPENAI_API_KEY" not in os.environ:
 Settings.llm = OpenAI(model="gpt-4o", temperature=0.0)
 
 # 4. DEFINE THE "SMART READER" (LlamaParse)
+PERSIST_DIR = "./storage"
+
 @st.cache_resource(show_spinner=False)
-def get_ai_brain(file_path):
-    with st.spinner("Reading document tables (LlamaParse)..."):
+def get_ai_brain(file_path, file_hash):
+    from llama_index.core import StorageContext, load_index_from_storage
+    
+    # Check if we have a saved index for this file
+    index_path = f"{PERSIST_DIR}/{file_hash}"
+    
+    if os.path.exists(index_path):
+        with st.spinner("Loading saved index..."):
+            storage_context = StorageContext.from_defaults(persist_dir=index_path)
+            index = load_index_from_storage(storage_context)
+            return index
+    
+    with st.spinner("Reading document tables (LlamaParse)... This only happens once per document."):
         # Check if LlamaCloud key exists
         if "LLAMA_CLOUD_API_KEY" in os.environ:
             parser = LlamaParse(result_type="markdown", verbose=True)
@@ -34,7 +47,15 @@ def get_ai_brain(file_path):
             documents = SimpleDirectoryReader(input_files=[file_path]).load_data()
 
         index = VectorStoreIndex.from_documents(documents)
+        
+        # Save the index for future use
+        index.storage_context.persist(persist_dir=index_path)
+        
         return index
+
+def get_file_hash(file_content):
+    import hashlib
+    return hashlib.md5(file_content).hexdigest()
 
 # 5. BUILD THE WEBSITE
 st.set_page_config(page_title="CFO Helper", page_icon="💰")
@@ -62,12 +83,16 @@ with st.sidebar:
 
 # Main Application Logic
 if uploaded_file:
+    # Get file content and hash
+    file_content = uploaded_file.getbuffer()
+    file_hash = get_file_hash(bytes(file_content))
+    
     # Save file temporarily
     with open("temp_report.pdf", "wb") as f:
-        f.write(uploaded_file.getbuffer())
+        f.write(file_content)
 
-    # Load the brain
-    index = get_ai_brain("temp_report.pdf")
+    # Load the brain (will use cached version if available)
+    index = get_ai_brain("temp_report.pdf", file_hash)
 
     # Create Chat Engine with "Strict Math" instructions
     if "chat_engine" not in st.session_state:
