@@ -286,17 +286,6 @@ with st.sidebar:
                     st.rerun()
     else:
         st.info("No documents uploaded yet.")
-    
-    st.header("3. Visitor Log")
-    visitor_logs = get_visitor_logs()
-    if visitor_logs:
-        import pandas as pd
-        df = pd.DataFrame(visitor_logs)
-        df.columns = ['IP Address', 'Country', 'Visit Time']
-        df['Visit Time'] = pd.to_datetime(df['Visit Time']).dt.strftime('%Y-%m-%d %H:%M')
-        st.dataframe(df, use_container_width=True, hide_index=True)
-    else:
-        st.info("No visitors recorded yet.")
 
 docs = get_documents_list()
 if docs:
