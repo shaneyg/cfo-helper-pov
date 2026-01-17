@@ -44,6 +44,4 @@ jobs:
             --name cfo-app-final \
             --resource-group cfo-helper-rg \
             --image cforegistry2015.azurecr.io/cfo-app-final:${{ github.sha }} \
-            --registry-server cforegistry2015.azurecr.io \
-            --registry-username ${{ secrets.CFOAPPFINAL_REGISTRY_USERNAME }} \
-            --registry-password ${{ secrets.CFOAPPFINAL_REGISTRY_PASSWORD }}
+
