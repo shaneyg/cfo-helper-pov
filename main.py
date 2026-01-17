@@ -280,7 +280,13 @@ def get_file_hash(file_content):
 
 def process_document(file_path, filename, file_hash):
     if "LLAMA_CLOUD_API_KEY" in os.environ:
-        parser = LlamaParse(result_type="markdown", verbose=True, timeout=3600)
+        parser = LlamaParse(
+          result_type="markdown", 
+          verbose=True,
+          # These are the correct parameters for LlamaCloud jobs 
+          job_timeout_in_seconds=3600, 
+          job_timeout_extra_time_per_page_in_seconds=10
+        )
         documents = parser.load_data(file_path)
     else:
         from llama_index.core import SimpleDirectoryReader
