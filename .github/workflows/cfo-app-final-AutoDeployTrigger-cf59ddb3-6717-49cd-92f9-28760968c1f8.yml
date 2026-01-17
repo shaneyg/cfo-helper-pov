@@ -42,8 +42,10 @@ jobs:
           registryPassword: ${{ secrets.CFOAPPFINAL_REGISTRY_PASSWORD }}
           containerAppName: cfo-app-final
           resourceGroup: cfo-helper-rg
+          dockerfilePath: Dockerfile
           imageToBuild: cforegistry2015.azurecr.io/cfo-app-final:${{ github.sha }}
           _buildArgumentsKey_: |
             _buildArgumentsValues_
+
 
 
