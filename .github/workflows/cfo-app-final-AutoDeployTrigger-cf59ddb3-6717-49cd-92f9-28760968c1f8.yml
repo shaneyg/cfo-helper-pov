@@ -27,7 +27,7 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Build and Push to ACR
-        uses: azure/container-apps-build-and-deploy@v1
+        uses: azure/container-apps-deploy-action@v1  # <--- This is the fix
         with:
           appSourcePath: ${{ github.workspace }}
           acrName: cforegistry2015
