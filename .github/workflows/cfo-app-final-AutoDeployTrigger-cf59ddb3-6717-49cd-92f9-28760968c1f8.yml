@@ -40,8 +40,16 @@ jobs:
 
       - name: Deploy to Container App
         run: |
+          # 1. SECURELY ADD REGISTRY PASSWORD TO THE APP
+          az containerapp registry set \
+            --name cfo-app-final \
+            --resource-group cfo-helper-rg \
+            --server cforegistry2015.azurecr.io \
+            --username ${{ secrets.CFOAPPFINAL_REGISTRY_USERNAME }} \
+            --password ${{ secrets.CFOAPPFINAL_REGISTRY_PASSWORD }}
+
+          # 2. UPDATE THE APP TO USE THE NEW IMAGE
           az containerapp update \
             --name cfo-app-final \
             --resource-group cfo-helper-rg \
-            --image cforegistry2015.azurecr.io/cfo-app-final:${{ github.sha }} \
-
+            --image cforegistry2015.azurecr.io/cfo-app-final:${{ github.sha }}
