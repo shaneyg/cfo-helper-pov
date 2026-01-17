@@ -345,22 +345,25 @@ with st.sidebar:
                         if os.path.exists(temp_path):
                             os.remove(temp_path)
 
-    st.header("2. Document Repository")
-    docs = get_documents_list()
+# FIND THIS SECTION AROUND LINE 353:
+st.header("2. Document Repository")
+docs = get_documents_list()
 
-    if docs:
-        for doc in docs:
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                display_name = doc['filename'][:25] + "..." if len(
-                    doc['filename']) > 25 else doc['filename']
-                st.text(display_name)
-            with col2:
-                if st.button("X", key=f"del_{doc['id']}"):
-                    remove_document(doc['id'], doc['file_hash'])
-                    st.rerun()
-    else:
-        st.info("No documents uploaded yet.")
+if docs:
+    # Use 'enumerate' to get a unique index 'i' for every row
+    for i, doc in enumerate(docs):
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            display_name = doc['filename'][:25] + "..." if len(
+                doc['filename']) > 25 else doc['filename']
+            st.text(display_name)
+        with col2:
+            # We add 'i' to the key to guarantee uniqueness (e.g., del_1_0, del_None_1)
+            if st.button("X", key=f"del_{doc.get('id', 'new')}_{i}"):
+                remove_document(doc['id'], doc['file_hash'])
+                st.rerun()
+else:
+    st.info("No documents uploaded yet.")
 
 docs = get_documents_list()
 if docs:
