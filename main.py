@@ -255,31 +255,31 @@ def add_document_record(filename, file_hash):
         raise Exception(f"Failed to save document record: {str(e)}")
 
 
-  def remove_document(doc_id, file_hash):
-      try:
-          engine = get_db_engine()
-          with engine.connect() as conn:
-              # 1. Remove the record from the 'documents' list
-              conn.execute(text("DELETE FROM documents WHERE id = :id"),
-                           {"id": doc_id})
-              
-              # 2. Target the correct vector table
-              # Since VECTOR_TABLE = "document_vectors", the actual table is "data_document_vectors"
-              actual_vector_table = f"data_{VECTOR_TABLE}"
-              
-              try:
-                  # We use the file_hash to wipe all chunks associated with this file
-                  conn.execute(
-                      text(f"DELETE FROM {actual_vector_table} WHERE metadata_->>'file_hash' = :file_hash"), 
-                      {"file_hash": file_hash}
-                  )
-              except Exception as e:
-                  # This catches cases where the vector table might not exist yet
-                  print(f"Vector cleanup skipped: {e}")
-                  
-              conn.commit()
-      except Exception as e:
-          st.error(f"Error removing document: {str(e)}")
+def remove_document(doc_id, file_hash):
+    try:
+        engine = get_db_engine()
+        with engine.connect() as conn:
+            # 1. Remove the record from the 'documents' list
+            conn.execute(text("DELETE FROM documents WHERE id = :id"),
+                         {"id": doc_id})
+            
+            # 2. Target the correct vector table
+            # Since VECTOR_TABLE = "document_vectors", the actual table is "data_document_vectors"
+            actual_vector_table = f"data_{VECTOR_TABLE}"
+            
+            try:
+                # We use the file_hash to wipe all chunks associated with this file
+                conn.execute(
+                    text(f"DELETE FROM {actual_vector_table} WHERE metadata_->>'file_hash' = :file_hash"), 
+                    {"file_hash": file_hash}
+                )
+            except Exception as e:
+                # This catches cases where the vector table might not exist yet
+                print(f"Vector cleanup skipped: {e}")
+                
+            conn.commit()
+    except Exception as e:
+        st.error(f"Error removing document: {str(e)}")  
 
 
 
