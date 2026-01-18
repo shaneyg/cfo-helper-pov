@@ -289,13 +289,26 @@ def get_file_hash(file_content):
 
 
 def process_document(file_path, filename, file_hash):
+    # 1. Check if we already have this file record
+    engine = get_db_engine()
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("SELECT id FROM documents WHERE file_hash = :file_hash"),
+            {"file_hash": file_hash}
+        ).fetchone()
+        
+        # If the document record exists, we should delete it and its vectors 
+        # to allow a clean "re-embed"
+        if result:
+            remove_document(result[0], file_hash)
+
+    # 2. Now proceed with the standard parsing and embedding
     if "LLAMA_CLOUD_API_KEY" in os.environ:
         parser = LlamaParse(
-          result_type="markdown", 
-          verbose=True,
-          # These are the correct parameters for LlamaCloud jobs 
-          job_timeout_in_seconds=3600, 
-          job_timeout_extra_time_per_page_in_seconds=10
+            result_type="markdown", 
+            verbose=True,
+            job_timeout_in_seconds=3600, 
+            job_timeout_extra_time_per_page_in_seconds=10
         )
         documents = parser.load_data(file_path)
     else:
@@ -308,14 +321,12 @@ def process_document(file_path, filename, file_hash):
 
     try:
         vector_store = get_vector_store()
-        storage_context = StorageContext.from_defaults(
-            vector_store=vector_store)
-        VectorStoreIndex.from_documents(documents,
-                                        storage_context=storage_context)
+        storage_context = StorageContext.from_defaults(vector_store=vector_store)
+        VectorStoreIndex.from_documents(documents, storage_context=storage_context)
     except Exception as e:
-        raise Exception(
-            f"Failed to store document embeddings. Please try again.")
+        raise Exception(f"Failed to store document embeddings: {str(e)}")
 
+    add_document_record(filename, file_hash)
     add_document_record(filename, file_hash)
 
 
