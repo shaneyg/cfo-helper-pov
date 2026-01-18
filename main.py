@@ -189,7 +189,8 @@ if docs_in_db:
     if "chat_engine" not in st.session_state or st.session_state.get("count") != len(docs_in_db):
         st.session_state.chat_engine = index.as_chat_engine(
             chat_mode="context", 
-            system_prompt="Assistant for a CFO. Answer from context. If $m is used, it means Millions. No LaTeX syntax."
+            similarity_top_k=10,
+            system_prompt="Assistant for a CFO. Answer from context. If $m is used, it means Millions. No LaTeX syntax. ONLY answer using the provided context. Do not guess or infer titles, roles or numbers"
         )
         st.session_state.count = len(docs_in_db)
 
