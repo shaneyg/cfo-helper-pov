@@ -181,3 +181,19 @@ if docs_in_db:
         st.session_state.messages = []
     
     if "chat_engine" not in st.session_state or st.session_state.get("count") != len(docs_in_db):
+        st.session_state.chat_engine = index.as_chat_engine(chat_mode="context", system_prompt="You are a CFO assistant. Check units ($m = Millions). No LaTeX.")
+        st.session_state.count = len(docs_in_db)
+
+    for m in st.session_state.messages:
+        with st.chat_message(m["role"]): st.write(m["content"])
+
+    if prompt := st.chat_input("Query documents..."):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"): st.write(prompt)
+        
+        with st.chat_message("assistant"):
+            response = st.session_state.chat_engine.chat(prompt)
+            st.write(response.response)
+            st.session_state.messages.append({"role": "assistant", "content": response.response})
+else:
+    st.info("Upload documents to start chatting.")
