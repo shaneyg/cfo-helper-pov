@@ -85,18 +85,23 @@ def get_documents_list():
     except: return []
 
 def remove_document(doc_id, file_hash):
-    """Atomically removes doc from registry and vector table"""
+    """Atomically removes doc from registry and vector table by Hash"""
     try:
         engine = get_db_engine()
         with engine.connect() as conn:
-            conn.execute(text("DELETE FROM documents WHERE id = :id"), {"id": doc_id})
-            # Correct LlamaIndex table targeting
+            # 1. DELETE FROM TRACKING TABLE
+            # We use file_hash instead of id to be 100% sure we hit the right row
+            conn.execute(text("DELETE FROM documents WHERE file_hash = :h"), {"h": file_hash})
+            
+            # 2. DELETE FROM VECTOR TABLE
             actual_vector_table = f"data_{VECTOR_TABLE}"
-            conn.execute(text(f"DELETE FROM {actual_vector_table} WHERE metadata_->>'file_hash' = :file_hash"), 
-                         {"file_hash": file_hash})
+            conn.execute(text(f"DELETE FROM {actual_vector_table} WHERE metadata_->>'file_hash' = :h"), 
+                         {"h": file_hash})
+            
             conn.commit()
     except Exception as e:
         st.error(f"Deletion failed: {e}")
+
 
 def get_vector_store():
     return PGVectorStore.from_params(
