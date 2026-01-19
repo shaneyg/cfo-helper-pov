@@ -22,12 +22,12 @@ st.set_page_config(page_title="CFO Helper", page_icon="💰", layout="wide")
 
 st.markdown("""
     <style>
-    .stApp { background-color: #000000 !important; }
+    .stApp { background-color: #0F172A !important; }
     h1, h2, h3 { color: #FFB900 !important; }
     p, span, label, .stMarkdown { color: #ffffff !important; }
-    .stChatInput { border-color: #FFB900 !important; background-color: #1a1a1a !important; }
+    .stChatInput { border-color: #FFB900 !important; background-color: #0F172A !important; }
     div[data-testid="stChatMessage"] { background-color: #1a1a1a !important; border: 1px solid #FFB900; border-radius: 10px; }
-    [data-testid="stSidebar"] { background-color: #1a1a1a !important; }
+    [data-testid="stSidebar"] { background-color: #0F172A !important; }
     [data-testid="stSidebar"] * { color: #ffffff !important; }
     .stButton button { background-color: #FFB900 !important; color: #000000 !important; font-weight: bold; border: none; }
     .stButton button:hover { background-color: #cc9400 !important; }
